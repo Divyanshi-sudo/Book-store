@@ -1,0 +1,466 @@
+const grid = document.querySelector("#book-grid");
+const search = document.querySelector("#search");
+const sort = document.querySelector("#sort");
+const genreTabs = document.querySelector("#genre-tabs");
+
+let activeGenre = "All";
+let bagCount = 0;
+const bagItems = [];
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR"
+  }).format(value);
+}
+
+function availabilityLabel(book) {
+  return book.stock > 0
+    ? `In stock · ${book.stock} available`
+    : "Out of stock";
+}
+
+function coverClass(book) {
+  if (book.cover !== "new-book") {
+    return `cover-${book.cover}`;
+  }
+
+  return `cover-new-book cover-new-book-${(book.id % 5) + 1}`;
+}
+
+async function loadBooks() {
+  const params = new URLSearchParams({
+    search: search.value,
+    genre: activeGenre,
+    sort: sort.value
+  });
+
+  const response = await fetch(`/api/books?${params}`);
+  const data = await response.json();
+
+  renderGenres(data.genres);
+
+  grid.innerHTML = data.books.length
+    ? data.books
+        .map(
+          (book) => `
+            <article class="book-card" data-detail="${book.id}">
+              <div class="cover ${coverClass(book)}">
+                <div class="cover-content">
+                  ${book.title}
+                  <small>${book.author}</small>
+                </div>
+              </div>
+
+              <div class="book-info">
+                <div>
+                  <h3>${book.title}</h3>
+                  <p>${book.author} · ${book.genre}</p>
+
+                  <p class="availability ${
+                    book.stock > 0 ? "available" : "sold-out"
+                  }">
+                    ${availabilityLabel(book)}
+                  </p>
+
+                  <p class="price">
+                    ${formatCurrency(book.price)}
+                  </p>
+                </div>
+
+                <span class="rating">
+                  ★ ${book.rating}
+                </span>
+
+                <button
+                  class="add-button"
+                  data-add="${book.id}"
+                  ${book.stock > 0 ? "" : "disabled"}
+                >
+                  ${book.stock > 0 ? "Add to bag" : "Unavailable"}
+                </button>
+              </div>
+            </article>
+          `
+        )
+        .join("")
+    : '<p class="loading">No books found. Try another search.</p>';
+}
+
+function renderGenres(genres) {
+  genreTabs.innerHTML = ["All", ...genres]
+    .map(
+      (genre) => `
+        <button
+          class="${activeGenre === genre ? "active" : ""}"
+          data-genre="${genre}"
+        >
+          ${genre === "All" ? "All books" : genre}
+        </button>
+      `
+    )
+    .join("");
+}
+
+genreTabs.addEventListener("click", (event) => {
+  if (event.target.dataset.genre) {
+    activeGenre = event.target.dataset.genre;
+    loadBooks();
+  }
+});
+
+search.addEventListener("input", loadBooks);
+sort.addEventListener("change", loadBooks);
+
+grid.addEventListener("click", async (event) => {
+  if (event.target.dataset.add) {
+    const response = await fetch(
+      `/api/books/${event.target.dataset.add}`
+    );
+
+    const { book } = await response.json();
+
+    bagItems.push(book);
+    bagCount += 1;
+
+    document.querySelector("#bag-count").textContent = bagCount;
+
+    event.target.textContent = "Added ✓";
+    event.target.disabled = true;
+
+    return;
+  }
+
+  const card = event.target.closest("[data-detail]");
+
+  if (!card) {
+    return;
+  }
+
+  const response = await fetch(`/api/books/${card.dataset.detail}`);
+  const { book } = await response.json();
+
+  document.querySelector("#detail-content").innerHTML = `
+    <p class="eyebrow">
+      ${book.genre} · ★ ${book.rating}
+    </p>
+
+    <h2 id="detail-title">
+      ${book.title}
+    </h2>
+
+    <p class="detail-author">
+      By ${book.author}
+    </p>
+
+    <p class="availability ${
+      book.stock > 0 ? "available" : "sold-out"
+    }">
+      ${availabilityLabel(book)}
+    </p>
+
+    <p class="detail-description">
+      ${book.description}
+    </p>
+
+    <strong class="detail-price">
+      ${formatCurrency(book.price)}
+    </strong>
+
+    ${
+      currentUser
+        ? `<button class="delete-book" data-delete="${book.id}" type="button">
+            Delete this book
+          </button>`
+        : ""
+    }
+  `;
+
+  document.querySelector("#detail-modal").hidden = false;
+});
+
+function renderBag() {
+  const items = document.querySelector("#bag-items");
+
+  const subtotal = bagItems.reduce(
+    (total, book) => total + book.price,
+    0
+  );
+
+  const shipping =
+    subtotal === 0 || subtotal >= 2500 ? 0 : 49;
+
+  items.innerHTML = bagItems.length
+    ? bagItems
+        .map(
+          (book, index) => `
+            <div class="bag-item">
+              <div>
+                <strong>${book.title}</strong>
+                <span>${book.author}</span>
+              </div>
+
+              <strong>
+                ${formatCurrency(book.price)}
+              </strong>
+
+              <button
+                class="remove-bag-item"
+                data-remove="${index}"
+                aria-label="Remove ${book.title}"
+              >
+                ×
+              </button>
+            </div>
+          `
+        )
+        .join("")
+    : '<p class="empty-bag">Your bag is waiting for a good story.</p>';
+
+  document.querySelector("#bag-subtotal").textContent =
+    formatCurrency(subtotal);
+
+  document.querySelector("#bag-shipping").textContent =
+    shipping ? formatCurrency(shipping) : "Free";
+
+  document.querySelector("#bag-total").textContent =
+    formatCurrency(subtotal + shipping);
+}
+
+document
+  .querySelector("#bag-open")
+  .addEventListener("click", () => {
+    renderBag();
+    document.querySelector("#bag-modal").hidden = false;
+  });
+
+document
+  .querySelector("#bag-items")
+  .addEventListener("click", (event) => {
+    if (event.target.dataset.remove) {
+      bagItems.splice(
+        Number(event.target.dataset.remove),
+        1
+      );
+
+      bagCount = bagItems.length;
+
+      document.querySelector("#bag-count").textContent =
+        bagCount;
+
+      renderBag();
+    }
+  });
+
+document
+  .querySelector("#checkout-button")
+  .addEventListener("click", () => {
+    if (bagItems.length) {
+      alert("Checkout is ready for the next step.");
+    }
+  });
+
+document
+  .querySelector("#detail-content")
+  .addEventListener("click", async (event) => {
+    if (
+      !event.target.dataset.delete ||
+      !confirm("Delete this book from the catalog?")
+    ) {
+      return;
+    }
+
+    const response = await fetch(
+      `/api/books/${event.target.dataset.delete}`,
+      {
+        method: "DELETE"
+      }
+    );
+
+    if (response.ok) {
+      document.querySelector("#detail-modal").hidden = true;
+      await loadBooks();
+    }
+  });
+
+const modal = document.querySelector("#account-modal");
+const authForm = document.querySelector("#auth-form");
+
+let authMode = "login";
+let currentUser = null;
+
+const accountPanel = document.querySelector("#account-panel");
+
+document
+  .querySelector("#account-open")
+  .addEventListener("click", () => {
+    if (currentUser) {
+      document.querySelector("#user-name").textContent =
+        currentUser.name;
+
+      document.querySelector("#user-email").textContent =
+        currentUser.email;
+
+      accountPanel.hidden = false;
+    } else {
+      modal.hidden = false;
+    }
+  });
+
+document
+  .querySelector("#account-close")
+  .addEventListener("click", () => {
+    modal.hidden = true;
+  });
+
+modal.addEventListener("click", (event) => {
+  if (event.target === modal) {
+    modal.hidden = true;
+  }
+
+  if (event.target.dataset.auth) {
+    setAuthMode(event.target.dataset.auth);
+  }
+});
+
+function setAuthMode(mode) {
+  authMode = mode;
+
+  document
+    .querySelectorAll("[data-auth]")
+    .forEach((button) => {
+      button.classList.toggle(
+        "active",
+        button.dataset.auth === mode
+      );
+    });
+
+  document.querySelector(".register-field").hidden =
+    mode !== "register";
+
+  document.querySelector("#auth-submit").innerHTML =
+    mode === "login"
+      ? "Sign in <span>↗</span>"
+      : "Create account <span>↗</span>";
+
+  document.querySelector("#form-message").textContent = "";
+}
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const formData = new FormData(authForm);
+  const payload = Object.fromEntries(formData);
+
+  const response = await fetch(`/api/${authMode}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+
+  const message = document.querySelector("#form-message");
+
+  if (!response.ok) {
+    message.textContent = data.error;
+    return;
+  }
+
+  currentUser = data.user;
+
+  document.querySelector("#account-open").textContent =
+    `Hi, ${data.user.name.split(" ")[0]}`;
+
+  modal.hidden = true;
+
+  authForm.reset();
+});
+
+document
+  .querySelector("#add-book-open")
+  .addEventListener("click", () => {
+    document.querySelector("#book-form").hidden = false;
+  });
+
+document
+  .querySelector("#book-form")
+  .addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const payload = Object.fromEntries(
+      new FormData(event.target)
+    );
+
+    const response = await fetch("/api/books", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      document.querySelector("#book-message").textContent =
+        data.error;
+
+      return;
+    }
+
+    event.target.reset();
+    event.target.hidden = true;
+
+    accountPanel.hidden = true;
+    activeGenre = "All";
+
+    await loadBooks();
+
+    document
+      .querySelector("#shop")
+      .scrollIntoView({
+        behavior: "smooth"
+      });
+  });
+
+document
+  .querySelector("#logout")
+  .addEventListener("click", async () => {
+    await fetch("/api/logout", {
+      method: "POST"
+    });
+
+    currentUser = null;
+    accountPanel.hidden = true;
+
+    document.querySelector("#account-open").textContent =
+      "Sign in";
+  });
+
+document
+  .querySelectorAll("[data-close]")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelector(
+        `#${button.dataset.close}`
+      ).hidden = true;
+    });
+  });
+
+async function restoreSession() {
+  const response = await fetch("/api/session");
+  const data = await response.json();
+
+  if (data.user) {
+    currentUser = data.user;
+
+    document.querySelector("#account-open").textContent =
+      `Hi, ${data.user.name.split(" ")[0]}`;
+  }
+}
+
+restoreSession();
+loadBooks();

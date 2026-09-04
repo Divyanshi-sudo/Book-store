@@ -1,0 +1,53 @@
+@media (max-width: 420px) {
+  .header-actions { gap: 8px; }
+  .account-button { display: inline-block; font-size: 11px; }
+}
+
+.cover-new-book {
+  background: #e8674f;
+  color: #fff4dc;
+}
+
+.cover-new-book:after {
+  border-width: 3px;
+  border-style: solid;
+  opacity: .55;
+}
+
+.cover-new-book-1 { background: #e8674f; color: #fff4dc; }
+.cover-new-book-2 { background: #3f7d78; color: #f7dfbb; }
+.cover-new-book-3 { background: #d49a52; color: #243c3b; }
+.cover-new-book-4 { background: #7c627c; color: #fae4bf; }
+.cover-new-book-5 { background: #5f7896; color: #fff4dc; }
+
+.bag-modal { max-width: 560px; }
+.bag-item { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; border-top: 1px solid var(--line); padding: 14px 0; }
+.bag-item div { display: grid; gap: 4px; }
+.bag-item span { color: var(--muted); font-size: 12px; }
+.remove-bag-item { background: none; color: var(--coral); font-size: 22px; padding: 0 4px; }
+.empty-bag { color: var(--muted); padding: 20px 0; }
+.bag-summary { border-top: 1px solid var(--ink); margin-top: 12px; padding-top: 12px; }
+.bag-summary p { display: flex; justify-content: space-between; margin: 9px 0; color: var(--muted); }
+.bag-summary .grand-total { color: var(--ink); font-size: 18px; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+.delete-book { display: block; background: none; color: var(--coral); font-size: 12px; margin-top: 22px; padding: 0; border-bottom: 1px solid var(--coral); }
+.availability { font-size: 11px; margin: 7px 0 0; }
+.availability.available { color: #3f7d78; }
+.availability.sold-out { color: var(--coral); font-weight: 700; }
+.add-button:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+
+.creator-credit {
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.creator-credit span {
+  color: var(--coral);
+  font-size: 12px;
+  letter-spacing: .08em;
+}
+
+@media (max-width: 760px) {
+  .creator-credit { text-align: left; margin-top: 18px; }
+}

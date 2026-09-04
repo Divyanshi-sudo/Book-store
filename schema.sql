@@ -1,0 +1,21 @@
+-- Paper & Ember bookstore schema (SQLite)
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE books (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  author TEXT NOT NULL,
+  genre TEXT NOT NULL,
+  price REAL NOT NULL CHECK(price >= 0),
+  rating REAL NOT NULL DEFAULT 0,
+  description TEXT NOT NULL,
+  cover TEXT NOT NULL,
+  featured INTEGER NOT NULL DEFAULT 0,
+  stock INTEGER NOT NULL DEFAULT 10 CHECK(stock >= 0)
+);
